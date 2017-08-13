@@ -19,9 +19,9 @@ namespace Repository.Repositories
 
 		}
 
-		public  IEnumerable<Product> SearchByName(string name)
+		public  async Task<IEnumerable<Product>> SearchByName(string name)
 		{
-			return  Context.Products.Where(x => x.Name == name.ToLower()).ToList();
+			return await Context.Products.Where(x => x.Name == name.ToLower()).ToListAsync();
 		}
 
 		public async Task AddOrUpdate( Guid id, Product product)

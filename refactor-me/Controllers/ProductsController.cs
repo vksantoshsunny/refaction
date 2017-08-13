@@ -38,7 +38,7 @@ namespace refactor_me.Controllers
 		[ValidateModelStateFilter]
 		public async Task<IHttpActionResult> SearchByName(string name)
 		{
-			var products = (_unitofwork.ProductRepository.SearchByName(name.ToLower()));
+			var products = await (_unitofwork.ProductRepository.SearchByName(name.ToLower()));
 			return Ok(products.Select(x => _mapper.Map<ProductDto>(x)));
 		}
 
