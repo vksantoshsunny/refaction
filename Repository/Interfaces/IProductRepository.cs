@@ -9,7 +9,8 @@ namespace Repository.Interfaces
 {
 	public interface IProductRepository : IRepository<Product>
 	{
-		IEnumerable<Product> SearchByName(string name);
-		Task AddOrUpdate(Guid id, Product product);
+        Task<IEnumerable<Product>> SearchByName(string name)
+
+        Task AddOrUpdate(Guid id, Product product);
 	}
 }
