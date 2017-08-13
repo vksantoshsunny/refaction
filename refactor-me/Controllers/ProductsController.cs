@@ -1,115 +1,127 @@
 ﻿using System;
 using System.Net;
+using System.Linq.Expressions;
+using System.Linq;
 using System.Web.Http;
-using refactor_me.Models;
+using Domain.Models;
+using System.Threading.Tasks;
+using Repository.Interfaces;
+using AutoMapper;
+using Repository.Dtos;
+using refactor_me.ValidationFilter;
 
 namespace refactor_me.Controllers
 {
-    [RoutePrefix("products")]
-    public class ProductsController : ApiController
-    {
-        [Route]
-        [HttpGet]
-        public Products GetAll()
-        {
-            return new Products();
-        }
+	[RoutePrefix("products")]
+	public class ProductsController : ApiController
+	{
+		IUnitOfWork _unitofwork;
+		IMapper _mapper;
 
-        [Route]
-        [HttpGet]
-        public Products SearchByName(string name)
-        {
-            return new Products(name);
-        }
+		public ProductsController(IUnitOfWork unitofwork, IMapper mapper)
+		{
+			_unitofwork = unitofwork;
+			_mapper = mapper;
+		}
 
-        [Route("{id}")]
-        [HttpGet]
-        public Product GetProduct(Guid id)
-        {
-            var product = new Product(id);
-            if (product.IsNew)
-                throw new HttpResponseException(HttpStatusCode.NotFound);
+		[Route]
+		[HttpGet]
+		[ValidateModelStateFilter]
+		public async Task<IHttpActionResult> GetAll()
+		{
+			var products = await (_unitofwork.ProductRepository.GetAll());
+			return Ok(products.Select(x => _mapper.Map<ProductDto>(x)));
+		}
 
-            return product;
-        }
+		[Route]
+		[HttpGet]
+		[ValidateModelStateFilter]
+		public async Task<IHttpActionResult> SearchByName(string name)
+		{
+			var products = (_unitofwork.ProductRepository.SearchByName(name.ToLower()));
+			return Ok(products.Select(x => _mapper.Map<ProductDto>(x)));
+		}
 
-        [Route]
-        [HttpPost]
-        public void Create(Product product)
-        {
-            product.Save();
-        }
+		[Route("{id}")]
+		[HttpGet]
+		[ValidateModelStateFilter]
+		public async Task<IHttpActionResult> GetProduct(Guid id)
+		{
+			var product = await _unitofwork.ProductRepository.Get(id);
+			return Ok(_mapper.Map<ProductDto>(product));
+		}
 
-        [Route("{id}")]
-        [HttpPut]
-        public void Update(Guid id, Product product)
-        {
-            var orig = new Product(id)
-            {
-                Name = product.Name,
-                Description = product.Description,
-                Price = product.Price,
-                DeliveryPrice = product.DeliveryPrice
-            };
+		[Route]
+		[HttpPost]
+		[ValidateModelStateFilter]
+		public async Task<IHttpActionResult> Create(ProductDto product)
+		{
+			await _unitofwork.ProductRepository.Add(_mapper.Map<Product>(product));
+			return Ok();
+		}
 
-            if (!orig.IsNew)
-                orig.Save();
-        }
+		[Route("{id}")]
+		[HttpPut]
+		[ValidateModelStateFilter]
+		public async Task<IHttpActionResult> Update(Guid id, ProductDto product)
+		{
+			await _unitofwork.ProductRepository.AddOrUpdate(id, _mapper.Map<Product>(product));
+			return Ok();
+		}
 
-        [Route("{id}")]
-        [HttpDelete]
-        public void Delete(Guid id)
-        {
-            var product = new Product(id);
-            product.Delete();
-        }
+		[Route("{id}")]
+		[HttpDelete]
+		[ValidateModelStateFilter]
+		public async Task<IHttpActionResult> Delete(Guid id)
+		{
+			await _unitofwork.ProductRepository.Remove(id);
+			return Ok();
+		}
 
-        [Route("{productId}/options")]
-        [HttpGet]
-        public ProductOptions GetOptions(Guid productId)
-        {
-            return new ProductOptions(productId);
-        }
+		[Route("{id}/options")]
+		[HttpGet]
+		[ValidateModelStateFilter]
+		public IHttpActionResult GetOptions(Guid id)
+		{
+			var options = _unitofwork.ProductOptionRepository.GetAllProductOptionsByProductId(id);
+			return Ok(options.Select(x => _mapper.Map<ProductOptionDto>(x)));
+		}
 
-        [Route("{productId}/options/{id}")]
-        [HttpGet]
-        public ProductOption GetOption(Guid productId, Guid id)
-        {
-            var option = new ProductOption(id);
-            if (option.IsNew)
-                throw new HttpResponseException(HttpStatusCode.NotFound);
+		[Route("{id}/options/{optionId}")]
+		[HttpGet]
+		[ValidateModelStateFilter]
+		public IHttpActionResult GetOption(Guid id, Guid optionId)
+		{
+			var option = _unitofwork.ProductOptionRepository.GetProductOptionsByProductId(id, optionId);
+			return Ok(_mapper.Map<ProductOptionDto>(option));
 
-            return option;
-        }
+		}
 
-        [Route("{productId}/options")]
-        [HttpPost]
-        public void CreateOption(Guid productId, ProductOption option)
-        {
-            option.ProductId = productId;
-            option.Save();
-        }
+		[Route("{id}/options")]
+		[HttpPost]
+		[ValidateModelStateFilter]
+		public async Task<IHttpActionResult> CreateOption(Guid id, ProductOptionDto option)
+		{
+			await _unitofwork.ProductOptionRepository.AddProductOptionByProductId(id, _mapper.Map<ProductOption>(option));
+			return Ok();
+		}
 
-        [Route("{productId}/options/{id}")]
-        [HttpPut]
-        public void UpdateOption(Guid id, ProductOption option)
-        {
-            var orig = new ProductOption(id)
-            {
-                Name = option.Name,
-                Description = option.Description
-            };
+		[Route("{id}/options/{optionId}")]
+		[HttpPut]
+		[ValidateModelStateFilter]
+		public async Task<IHttpActionResult> UpdateOption(Guid id, Guid optionId, ProductOptionDto option)
+		{
+			await _unitofwork.ProductOptionRepository.AddOrUpdateOptionByProduct(id, optionId, _mapper.Map<ProductOption>(option));
+			return Ok();
+		}
 
-            if (!orig.IsNew)
-                orig.Save();
-        }
-
-        [Route("{productId}/options/{id}")]
-        [HttpDelete]
-        public void DeleteOption(Guid id)
-        {
-            var opt = new ProductOption(id);
-            opt.Delete();
-        }
-    }
+		[Route("{id}/options/{optionId}")]
+		[HttpDelete]
+		[ValidateModelStateFilter]
+		public async Task<IHttpActionResult> DeleteOption(Guid id, Guid optionId)
+		{
+			await _unitofwork.ProductOptionRepository.RemoveProductOptionByIdAndProductId(id, optionId);
+			return Ok();
+		}
+	}
 }
